@@ -1,0 +1,7 @@
+# fotos de entrenamiento (dataset, no se sube)
+fotos/
+
+# sistema
+Thumbs.db
+.DS_Store
+*.log

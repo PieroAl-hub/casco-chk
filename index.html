@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CASCO-CHK · Verificador de equipo de protección</title>
+<meta name="description" content="Verificación en tiempo real del uso correcto de casco de seguridad mediante clasificación de imágenes">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-in">
+        <div class="mark">
+            <span class="mark-icon"><i class="fas fa-hard-hat"></i></span>
+            <span class="mark-name">CASCO-CHK</span>
+            <span class="mark-ver">v1.0</span>
+        </div>
+        <div class="lamp" id="modelStatus" data-state="off">
+            <span class="lamp-dot"></span>
+            <span class="lamp-txt">modelo sin cargar</span>
+        </div>
+    </div>
+    <div class="hazard"></div>
+</header>
+
+<main class="layout">
+
+    <div class="col-main">
+
+        <!-- estado del modelo -->
+        <section class="panel">
+            <div class="panel-hd">
+                <h2>Modelo</h2>
+                <span class="panel-tag" id="modelTag">cargando</span>
+            </div>
+            <div class="panel-bd">
+                <div class="loader" id="loadModelMsg">
+                    <span class="spinner"></span>
+                    <span>Cargando pesos del modelo…</span>
+                </div>
+                <p class="ok-msg" id="modelOk" hidden>
+                    Modelo cargado. Clases disponibles:
+                </p>
+                <div class="chips" id="classList"></div>
+            </div>
+        </section>
+
+        <!-- cámara -->
+        <section class="panel">
+            <div class="panel-hd">
+                <h2>Cámara</h2>
+                <span class="panel-tag" id="camTag">detenida</span>
+            </div>
+            <div class="panel-bd">
+                <div class="viewport" id="viewport">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="hitbox"></canvas>
+                    <div class="hud" id="hud">
+                        <span class="hud-name" id="hudName">SIN SEÑAL</span>
+                        <span class="hud-pct" id="hudPct"></span>
+                    </div>
+                    <span class="bracket tl"></span>
+                    <span class="bracket tr"></span>
+                    <span class="bracket bl"></span>
+                    <span class="bracket br"></span>
+                    <span class="scanline" id="scanline" hidden></span>
+                </div>
+                <div class="toolbar">
+                    <button class="btn btn-go" id="btnStart" disabled>
+                        <i class="fas fa-video"></i> Iniciar
+                    </button>
+                    <button class="btn btn-stop" id="btnStop" disabled>
+                        <i class="fas fa-stop"></i> Detener
+                    </button>
+                    <button class="btn btn-ghost" id="btnSound" type="button">
+                        <i class="fas fa-volume-up"></i> Sonido activo
+                    </button>
+                    <label class="switch">
+                        <input type="checkbox" id="autoSound" checked>
+                        <span>alarma automática</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-side">
+
+        <!-- veredicto -->
+        <section class="verdict" id="resultBanner" data-state="idle">
+            <div class="verdict-icon" id="resultIcon">
+                <i class="fas fa-minus"></i>
+            </div>
+            <div class="verdict-body">
+                <div class="verdict-title" id="resultTitle">En espera</div>
+                <div class="verdict-desc" id="resultDesc">Inicie la cámara para comenzar la verificación</div>
+            </div>
+        </section>
+
+        <!-- probabilidades -->
+        <section class="panel">
+            <div class="panel-hd">
+                <h2>Salida del clasificador</h2>
+            </div>
+            <div class="panel-bd">
+                <div class="bars" id="predictions">
+                    <p class="empty">Sin datos</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- contadores -->
+        <div class="counters">
+            <div class="cnt">
+                <span class="cnt-n" id="statTotal">0</span>
+                <span class="cnt-l">lecturas</span>
+            </div>
+            <div class="cnt cnt-ok">
+                <span class="cnt-n" id="statOk">0</span>
+                <span class="cnt-l">con casco</span>
+            </div>
+            <div class="cnt cnt-bad">
+                <span class="cnt-n" id="statBad">0</span>
+                <span class="cnt-l">sin casco</span>
+            </div>
+            <div class="cnt">
+                <span class="cnt-n" id="statFps">0</span>
+                <span class="cnt-l">fps</span>
+            </div>
+        </div>
+
+        <!-- registro -->
+        <section class="panel">
+            <div class="panel-hd">
+                <h2>Registro</h2>
+                <button class="link-btn" id="btnClear">limpiar</button>
+            </div>
+            <div class="panel-bd panel-tight">
+                <table class="log">
+                    <thead>
+                        <tr><th>Hora</th><th>Clase</th><th>Conf.</th></tr>
+                    </thead>
+                    <tbody id="logBody"></tbody>
+                </table>
+                <p class="empty" id="logEmpty">Sin lecturas registradas</p>
+            </div>
+        </section>
+    </div>
+
+</main>
+
+<footer class="foot">
+    <span>CASCO-CHK</span>
+    <span class="sep"></span>
+    <span>Proyecto: sistema de clasificación de imágenes mediante IA</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface/dist/blazeface.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
