@@ -5,9 +5,11 @@ let soundOn = true;
 let lastBeep = 0;
 let frames = 0;
 let fpsMark = 0;
-let counts = { total: 0, ok: 0, bad: 0 };
+let counts = { total: 0, ok: 0, warn: 0, bad: 0 };
 let logRows = 0;
-let verdict = { name: null, pct: 0, pass: null };
+let verdict = { name: null, pct: 0, state: null };
+const STATE_RANK = { bad: 3, warn: 2, ok: 1 };
+const STATE_LABEL = { ok: 'OK', warn: 'REVISAR', bad: 'FALLA' };
 let prevClasses = [];
 
 const $ = (id) => document.getElementById(id);
@@ -58,7 +60,7 @@ function drawHitbox(faces) {
 
     faces.forEach((f, i) => {
         const v = f.verdict;
-        const color = !v ? '#1d3bdf' : v.pass ? '#3ddc7c' : '#ff5f52';
+        const color = !v ? '#1d3bdf' : ({ ok: '#3ddc7c', warn: '#f0a30a', bad: '#ff5f52' }[v.state]);
 
         let x = ox + f.topLeft[0] * scale;
         let y = oy + f.topLeft[1] * scale;
@@ -129,9 +131,9 @@ async function classifyFaces(faces) {
             let top = out[0];
             for (const p of out) if (p.probability > top.probability) top = p;
             faces[i].verdict = {
-                name: top.className,
+                name: top.className.trim(),
                 pct: Math.round(top.probability * 100),
-                pass: isSafe(top.className),
+                state: classState(top.className),
                 preds: out
             };
         } catch (e) {
@@ -141,22 +143,21 @@ async function classifyFaces(faces) {
     return faces;
 }
 
-// veredicto general: falla si alguien no lleva casco
+// veredicto general: manda el peor estado (sin casco > mal puesto > ok)
 function overallVerdict(faces) {
-    if (!faces.length) return { name: null, pct: 0, pass: null };
+    const withV = faces.filter(f => f.verdict);
+    if (!withV.length) return { name: null, pct: 0, state: null };
 
-    const bad = faces.filter(f => f.verdict && !f.verdict.pass);
-    const primary = faces[0].verdict;
-
-    if (bad.length) {
-        return {
-            name: bad[0].verdict.name,
-            pct: bad[0].verdict.pct,
-            pass: false,
-            extra: faces.length > 1 ? bad.length + ' de ' + faces.length + ' sin casco' : null
-        };
+    let worst = withV[0];
+    for (const f of withV) {
+        if (STATE_RANK[f.verdict.state] > STATE_RANK[worst.verdict.state]) worst = f;
     }
-    return { name: primary.name, pct: primary.pct, pass: true, extra: null };
+    const w = worst.verdict;
+    const same = withV.filter(f => f.verdict.state === w.state).length;
+    const extra = withV.length > 1
+        ? same + ' de ' + withV.length + ' detectados: ' + w.name
+        : null;
+    return { name: w.name, pct: w.pct, state: w.state, extra };
 }
 
 // carga el modelo al abrir la página
@@ -217,7 +218,7 @@ btnStop.addEventListener('click', () => {
     viewport.className = 'viewport';
     hudName.textContent = 'SIN SEÑAL';
     hudPct.textContent = '';
-    verdict = { name: null, pct: 0, pass: null };
+    verdict = { name: null, pct: 0, state: null };
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 });
 
@@ -232,9 +233,10 @@ btnClear.addEventListener('click', () => {
     logBody.innerHTML = '';
     logRows = 0;
     logEmpty.hidden = false;
-    counts = { total: 0, ok: 0, bad: 0 };
+    counts = { total: 0, ok: 0, warn: 0, bad: 0 };
     $('statTotal').textContent = '0';
     $('statOk').textContent = '0';
+    $('statWarn').textContent = '0';
     $('statBad').textContent = '0';
 });
 
@@ -273,11 +275,12 @@ function trackChanges(faces) {
         if (cls && prevClasses[i] !== cls) {
             const v = faces[i].verdict;
             counts.total++;
-            v.pass ? counts.ok++ : counts.bad++;
+            counts[v.state]++;
             $('statTotal').textContent = counts.total;
             $('statOk').textContent = counts.ok;
+            $('statWarn').textContent = counts.warn;
             $('statBad').textContent = counts.bad;
-            addLog(v.name, v.pct, v.pass);
+            addLog(v.name, v.pct, v.state);
         }
     });
     prevClasses = classes;
@@ -290,16 +293,20 @@ function showVerdict(v, faces) {
     hudName.textContent = v.name;
     hudPct.textContent = v.pct + '%';
 
-    banner.dataset.state = v.pass ? 'pass' : 'fail';
-    resultIcon.innerHTML = v.pass
-        ? '<i class="fas fa-check"></i>'
-        : '<i class="fas fa-times"></i>';
-    resultTitle.textContent = v.pass ? 'Casco correctamente puesto' : 'Casco ausente o incorrecto';
+    const ui = {
+        ok:  { icon: 'fa-check',           title: 'Casco correctamente puesto', cls: 'pass' },
+        warn: { icon: 'fa-exclamation-triangle', title: 'Casco mal puesto',          cls: 'warn' },
+        bad:  { icon: 'fa-times',           title: 'Sin casco',                    cls: 'alarm' }
+    }[v.state];
+
+    banner.dataset.state = v.state === 'ok' ? 'pass' : (v.state === 'warn' ? 'warn' : 'fail');
+    resultIcon.innerHTML = '<i class="fas ' + ui.icon + '"></i>';
+    resultTitle.textContent = ui.title;
     resultDesc.textContent = v.extra
         ? v.extra
         : 'Clase detectada: ' + v.name + ' · confianza ' + v.pct + '%';
 
-    viewport.className = 'viewport ' + (v.pass ? 'pass' : 'alarm');
+    viewport.className = 'viewport ' + ui.cls;
 
     // barras de la primera persona detectada
     const primary = faces.find(f => f.verdict && f.verdict.preds);
@@ -308,9 +315,9 @@ function showVerdict(v, faces) {
         const topName = primary.verdict.name;
         predictionsBox.innerHTML = out.map(p => {
             const val = Math.round(p.probability * 100);
-            const cls = p.className === topName ? (primary.verdict.pass ? 'ok' : 'bad') : '';
+            const cls = p.className.trim() === topName ? primary.verdict.state : '';
             return `<div class="bar-row">
-                <span class="bar-name">${p.className}</span>
+                <span class="bar-name">${p.className.trim()}</span>
                 <span class="bar-track"><span class="bar-fill ${cls}" style="width:${val}%"></span></span>
                 <span class="bar-pct">${val}%</span>
             </div>`;
@@ -319,16 +326,19 @@ function showVerdict(v, faces) {
 
     const now = Date.now();
     if (soundOn && autoSound.checked && now - lastBeep > 1500) {
-        v.pass ? tone(880, 160) : alarm();
+        if (v.state === 'ok') tone(880, 160);
+        else if (v.state === 'warn') { tone(660, 140); tone(660, 140, 0.2); }
+        else alarm();
         lastBeep = now;
     }
 }
 
-// las clases con "sin" o "no" se consideran incumplimiento
-function isSafe(name) {
-    const n = name.toLowerCase();
-    if (n.includes('sin ') || n.includes('sin-') || n.includes('no ') || n.includes('no-')) return false;
-    return true;
+// estado de la clase: ok / warn (mal puesto) / bad (sin casco)
+function classState(name) {
+    const n = name.toLowerCase().trim();
+    if (n.includes('mal')) return 'warn';
+    if (n.startsWith('sin') || n.includes('sin ') || n.includes('no ') || n.includes('no-')) return 'bad';
+    return 'ok';
 }
 
 let actx = null;
@@ -354,13 +364,13 @@ function alarm() {
     tone(420, 220, 0.6);
 }
 
-function addLog(name, pct, pass) {
+function addLog(name, pct, state) {
     logRows++;
     logEmpty.hidden = true;
     const hora = new Date().toLocaleTimeString();
     const row = document.createElement('tr');
     row.innerHTML = `<td>${hora}</td><td>${name}</td>
-        <td class="${pass ? 'tag-ok' : 'tag-bad'}">${pct}% ${pass ? 'OK' : 'FALLA'}</td>`;
+        <td class="tag-${state}">${pct}% ${STATE_LABEL[state]}</td>`;
     logBody.prepend(row);
     while (logBody.children.length > 12) logBody.removeChild(logBody.lastChild);
 }

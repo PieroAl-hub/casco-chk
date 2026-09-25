@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CASCO-CHK · Verificador de equipo de protección</title>
 <meta name="description" content="Verificación en tiempo real del uso correcto de casco de seguridad mediante clasificación de imágenes">
-<link rel="stylesheet" href="css/app.css?v=3">
+<link rel="stylesheet" href="css/app.css?v=4">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -125,6 +125,10 @@
                 <span class="cnt-n" id="statOk">0</span>
                 <span class="cnt-l">con casco</span>
             </div>
+            <div class="cnt cnt-warn">
+                <span class="cnt-n" id="statWarn">0</span>
+                <span class="cnt-l">mal puesto</span>
+            </div>
             <div class="cnt cnt-bad">
                 <span class="cnt-n" id="statBad">0</span>
                 <span class="cnt-l">sin casco</span>
@@ -166,6 +170,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image/dist/teachablemachine-image.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface/dist/blazeface.min.js"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js?v=4"></script>
 </body>
 </html>

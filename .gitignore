@@ -5,3 +5,5 @@ fotos/
 Thumbs.db
 .DS_Store
 *.log
+capturatemp/
+capturar.html
