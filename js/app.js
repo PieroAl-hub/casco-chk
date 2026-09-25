@@ -58,7 +58,7 @@ function drawHitbox(faces) {
 
     faces.forEach((f, i) => {
         const v = f.verdict;
-        const color = !v ? '#e8a300' : v.pass ? '#3ddc7c' : '#ff5f52';
+        const color = !v ? '#1d3bdf' : v.pass ? '#3ddc7c' : '#ff5f52';
 
         let x = ox + f.topLeft[0] * scale;
         let y = oy + f.topLeft[1] * scale;
